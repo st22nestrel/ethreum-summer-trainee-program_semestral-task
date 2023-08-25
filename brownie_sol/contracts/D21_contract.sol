@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "IVoteD21.sol";
+import "../interfaces/IVoteD21.sol";
 
 contract D21 is IVoteD21 {
     address payable public owner;
@@ -12,11 +12,14 @@ contract D21 is IVoteD21 {
     struct Voter{
         uint positiveVotes;
         uint negativeVotes;
+        bool registered; //for checking if mapping of address to Voter structs truly exists
     }
 
-
     mapping (address => Subject) private subjectsMap;
-    Subject[] private subjects;
+    address[] private subjectsAdressess;
+
+    bool private resultsCalculated;
+    Subject[] private votingResults;
 
     //address payable[] private voters;
     mapping (address => Voter) votersMap;
@@ -29,18 +32,23 @@ contract D21 is IVoteD21 {
     }
 
     function addSubject(string memory name) public {
-        //if subject not already in subjects[]
-        subjects.push(Subject(name, 0));
+        // Generate a new address for the subject
+        address subjectAddress = address(bytes20(sha256(abi.encodePacked(name, block.timestamp))));
+
+        Subject memory newSubject = Subject(name, 0);
+        subjectsMap[subjectAddress] = newSubject;
+        subjectsAdressess.push(subjectAddress);
+        votingResults.push(newSubject);
     }
 
     //if voter not in 
     function addVoter(address addr) public onlyOwner {
         // maybe payable(addr)
-        voters.push(Voter(addr, 0, 0));
+        votersMap[addr] = Voter(0, 0, true);
     }
 
     function getSubjects() public view returns(address[] memory) {
-        return subjects;
+        return subjectsAdressess;
     }
 
     function getSubject(address addr) public view returns(Subject memory) {
@@ -49,20 +57,52 @@ contract D21 is IVoteD21 {
 
     function votePositive(address addr) public canVote canVotePositive {
         votersMap[msg.sender].negativeVotes += 1;
-        Subject(addr).votes += 1;
+        subjectsMap[addr].votes += 1;
     }
 
-    function voteNegative(address addr) public canVote onlyAfter2PositiveVotes canVoteNegative {
+    function voteNegative(address addr) public canVote canVoteNegative {
         votersMap[msg.sender].negativeVotes = 1;
-        Subject(addr).votes += 1;
+        subjectsMap[addr].votes -= 1;
     }
 
     function getRemainingTime() public view returns(uint) {
-        
+        return creationTime + 7 days - block.timestamp;
     }
 
-    function getResults() external view returns(Subject[] memory){
+    function calculateResults() private {
+        //uint[subjects.length] memory ordering;
 
+        // algorithm adopted from https://gist.github.com/sdelvalle57/f5f65a31150ea9321f081630b416ed99
+        uint l = subjectsAdressess.length;
+        for(uint i = 0; i < l; i++) {
+            for(uint j = i+1; j < l ;j++) {
+                if(votingResults[i].votes > 
+                   votingResults[j].votes) {
+                    Subject memory temp = votingResults[i];
+                    votingResults[i] = votingResults[j];
+                    votingResults[j] = temp;
+                }
+            }
+        }
+        resultsCalculated = true;
+    }
+
+    function getResults() public view returns(Subject[] memory) {
+        require(hasVotingEnded(), "Voting not ended yet, cannot view results");
+        if (!resultsCalculated){
+                calculateResults();
+            }
+        return votingResults;
+        /* if (hasVotingEnded()) {
+            if (!resultsCalculated){
+                calculateResults();
+            }
+            return votingResults;
+        } */
+    }
+
+    function hasVotingEnded() private view returns(bool) {
+        return block.timestamp < creationTime + 7 days ? false : true;
     }
 
     // Modifiers
@@ -72,26 +112,22 @@ contract D21 is IVoteD21 {
         _;
     }
 
-    modifier onlyAfter2PositiveVotes() {
-        require(votersMap[msg.sender].positiveVotes == 2, "Only the owner can call this function");
-        _;
-    }
-
     modifier canVotePositive() {
-        require(votersMap[msg.sender].positiveVotes < 2, "Only the owner can call this function");
+        require(votersMap[msg.sender].positiveVotes < 2, "Exceeded limit for positive votes, cannot vote positive");
         _;
     }
 
     modifier canVoteNegative() {
-        require(votersMap[msg.sender].positiveVotes == 2, "Only the owner can call this function");
-        require(votersMap[msg.sender].negativeVotes < 1, "Only the owner can call this function");
+        require(votersMap[msg.sender].positiveVotes == 2, "Condition for negative vote not met - need to vote 2 positives first");
+        require(votersMap[msg.sender].negativeVotes < 1, "Exceeded limit for negative votes, cannot vote negative");
         _;
     }
 
 
     // TODO find how to check for null in javascript
     modifier canVote() {
-        require(votersMap[msg.sender] != None, "Only the owner can call this function");
+        require(hasVotingEnded() == false, "Voting ended, cannot vote anymore");
+        require(votersMap[msg.sender].registered == false, "Caller is not registered for voting");
         _;
     }
 }
