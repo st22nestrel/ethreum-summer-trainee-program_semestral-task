@@ -22,6 +22,6 @@ function voteNegative(address addr) external;
 
 function getRemainingTime() external view returns(uint);
 
-function getResults() external view returns(Subject[] memory);
+function getResults() external returns(Subject[] memory);
 
 }

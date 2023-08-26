@@ -19,7 +19,7 @@ contract D21 is IVoteD21 {
     address[] private subjectsAdressess;
 
     bool private resultsCalculated;
-    Subject[] private votingResults;
+    Subject[] public votingResults;
 
     //address payable[] private voters;
     mapping (address => Voter) votersMap;
@@ -87,7 +87,7 @@ contract D21 is IVoteD21 {
         resultsCalculated = true;
     }
 
-    function getResults() public view returns(Subject[] memory) {
+    function getResults() public returns(Subject[] memory) {
         require(hasVotingEnded(), "Voting not ended yet, cannot view results");
         if (!resultsCalculated){
                 calculateResults();
