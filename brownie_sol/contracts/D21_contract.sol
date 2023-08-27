@@ -8,6 +8,7 @@ contract D21 is IVoteD21 {
     uint private D21_id;
 
     uint public creationTime; // state variable to store the creation time
+    uint public duration;
 
     struct Voter{
         uint positiveVotes;
@@ -15,25 +16,30 @@ contract D21 is IVoteD21 {
         bool registered; //for checking if mapping of address to Voter structs truly exists
     }
 
-    mapping (address => Subject) private subjectsMap;
-    address[] private subjectsAdressess;
+    mapping (address => Subject) public subjectsMap;
+    address[] public subjectsAdressess;
 
-    bool private resultsCalculated;
+    bool public resultsCalculated;
     Subject[] public votingResults;
 
     //address payable[] private voters;
-    mapping (address => Voter) votersMap;
+    mapping (address => Voter) public votersMap;
     //Voter[] private voters;
 
-    constructor () {
+    constructor (uint _duration) {
         owner = payable(msg.sender);
         creationTime = block.timestamp; // initialize the creation time to current time
+        if (_duration == 0)
+            duration = _duration;
+        else {
+            duration = 7 days;
+        }
         D21_id = 1;
     }
 
     function addSubject(string memory name) public {
         // Generate a new address for the subject
-        address subjectAddress = address(bytes20(sha256(abi.encodePacked(name, block.timestamp))));
+        address subjectAddress = address(bytes20(uint160(subjectsAdressess.length)));
 
         Subject memory newSubject = Subject(name, 0);
         subjectsMap[subjectAddress] = newSubject;
@@ -56,7 +62,7 @@ contract D21 is IVoteD21 {
     }
 
     function votePositive(address addr) public canVote canVotePositive {
-        votersMap[msg.sender].negativeVotes += 1;
+        votersMap[msg.sender].positiveVotes += 1;
         subjectsMap[addr].votes += 1;
     }
 
@@ -66,7 +72,7 @@ contract D21 is IVoteD21 {
     }
 
     function getRemainingTime() public view returns(uint) {
-        return creationTime + 7 days - block.timestamp;
+        return creationTime + block.timestamp - duration;
     }
 
     function calculateResults() private {
@@ -102,7 +108,7 @@ contract D21 is IVoteD21 {
     }
 
     function hasVotingEnded() private view returns(bool) {
-        return block.timestamp < creationTime + 7 days ? false : true;
+        return block.timestamp < creationTime + duration ? false : true;
     }
 
     // Modifiers
@@ -127,7 +133,11 @@ contract D21 is IVoteD21 {
     // TODO find how to check for null in javascript
     modifier canVote() {
         require(hasVotingEnded() == false, "Voting ended, cannot vote anymore");
-        require(votersMap[msg.sender].registered == false, "Caller is not registered for voting");
+        require(votersMap[msg.sender].registered == true, "Caller is not registered for voting");
         _;
+    }
+
+    function checkCanSenderVote() public view returns(bool) {
+        return votersMap[msg.sender].registered == true;
     }
 }
