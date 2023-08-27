@@ -11,8 +11,9 @@ contract D21 is IVoteD21 {
     uint public duration;
 
     struct Voter{
-        uint positiveVotes;
-        uint negativeVotes;
+        // TODO make this fixed size array? as it is more effective??
+        address[2] votedPositive;
+        bool votedNegative;
         bool registered; //for checking if mapping of address to Voter structs truly exists
     }
 
@@ -39,7 +40,7 @@ contract D21 is IVoteD21 {
 
     function addSubject(string memory name) public {
         // Generate a new address for the subject
-        address subjectAddress = address(bytes20(uint160(subjectsAdressess.length)));
+        address subjectAddress = address(bytes20(uint160(subjectsAdressess.length + 1)));
 
         Subject memory newSubject = Subject(name, 0);
         subjectsMap[subjectAddress] = newSubject;
@@ -50,7 +51,7 @@ contract D21 is IVoteD21 {
     //if voter not in 
     function addVoter(address addr) public onlyOwner {
         // maybe payable(addr)
-        votersMap[addr] = Voter(0, 0, true);
+        votersMap[addr] = Voter([address(0), address(0)] ,false, true);
     }
 
     function getSubjects() public view returns(address[] memory) {
@@ -62,12 +63,24 @@ contract D21 is IVoteD21 {
     }
 
     function votePositive(address addr) public canVote canVotePositive {
-        votersMap[msg.sender].positiveVotes += 1;
+        Voter storage voter = votersMap[msg.sender];
+        if (voter.votedPositive[0] == addr){
+            revert("Caller cannot vote for same party twice");
+        }
+        if (voter.votedPositive[0] == address(0)) {
+            voter.votedPositive[0] = addr;
+        }
+        else {
+            voter.votedPositive[1] = addr;
+        }
         subjectsMap[addr].votes += 1;
     }
 
     function voteNegative(address addr) public canVote canVoteNegative {
-        votersMap[msg.sender].negativeVotes = 1;
+        Voter storage voter = votersMap[msg.sender];
+        require(voter.votedPositive[0] != addr && voter.votedPositive[1] != addr,
+            "Caller cannot vote negative for party that was already voted positive");
+        votersMap[msg.sender].votedNegative = true;
         subjectsMap[addr].votes -= 1;
     }
 
@@ -119,14 +132,19 @@ contract D21 is IVoteD21 {
     }
 
     modifier canVotePositive() {
-        require(votersMap[msg.sender].positiveVotes < 2, "Exceeded limit for positive votes, cannot vote positive");
+        require(voted2xPositive() == false, "Exceeded limit for positive votes, cannot vote positive");
         _;
     }
 
     modifier canVoteNegative() {
-        require(votersMap[msg.sender].positiveVotes == 2, "Condition for negative vote not met - need to vote 2 positives first");
-        require(votersMap[msg.sender].negativeVotes < 1, "Exceeded limit for negative votes, cannot vote negative");
+        require(voted2xPositive() == true, "Condition for negative vote not met - need to vote 2 positives first");
+        require(votersMap[msg.sender].votedNegative == false, "Exceeded limit for negative votes, cannot vote negative");
         _;
+    }
+
+    function voted2xPositive() private view returns(bool) {
+        Voter storage voter = votersMap[msg.sender];
+        return voter.votedPositive[0] != address(0) && voter.votedPositive[1] != address(0);
     }
 
 
@@ -139,5 +157,9 @@ contract D21 is IVoteD21 {
 
     function checkCanSenderVote() public view returns(bool) {
         return votersMap[msg.sender].registered == true;
+    }
+
+    function getVotedParties() public view returns(address[2] memory) {
+        return votersMap[msg.sender].votedPositive;
     }
 }

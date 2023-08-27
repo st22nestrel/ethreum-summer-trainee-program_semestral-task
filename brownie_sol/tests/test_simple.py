@@ -36,8 +36,10 @@ def test_voteForSubjectPositive(d21, add_voters_and_parties):
     d21.votePositive(subj_add[1], {"from": accounts[1]})
 
     assert d21.subjectsMap(subj_add[0])[1] == 1
-    #assert d21.subjectsMap(subj_add[1])[1] == 1
-    assert d21.votersMap(accounts[1])[0] == 2
+    assert d21.subjectsMap(subj_add[1])[1] == 1
+
+    subj_voted = d21.getVotedParties({"from": accounts[1]})
+    assert subj_voted[0] == subj_add[0] and subj_voted[1] == subj_add[1]
 
 def test_voteForSubjectNegative(d21, add_voters_and_parties):
     #test_voteForSubjectPositive
@@ -48,7 +50,7 @@ def test_voteForSubjectNegative(d21, add_voters_and_parties):
     d21.voteNegative(subj_add[2], {"from": accounts[1]})
 
     assert d21.subjectsMap(subj_add[2])[1] == -1
-    assert d21.votersMap(accounts[1])[1] == 1
+    assert d21.votersMap(accounts[1])[0] == True
 
 
 
