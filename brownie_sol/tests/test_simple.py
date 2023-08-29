@@ -16,12 +16,35 @@ def add_voters_and_parties(d21):
     d21.addVoter(accounts[1].address, {"from": accounts[0]})
     d21.addVoter(accounts[2].address, {"from": accounts[0]})
 
+@pytest.fixture()
+def results_fixture(d21, add_voters_and_parties):
+    d21.addSubject("Hlas", {"from": accounts[0]})
+    d21.addVoter(accounts[3].address, {"from": accounts[0]})
+    d21.addVoter(accounts[4].address, {"from": accounts[0]})
+
+    subj_add = d21.getSubjects()
+    d21.votePositive(subj_add[0], {"from": accounts[1]})
+    d21.votePositive(subj_add[1], {"from": accounts[1]})
+    d21.voteNegative(subj_add[2], {"from": accounts[1]})
+
+    d21.votePositive(subj_add[1], {"from": accounts[2]})
+    d21.votePositive(subj_add[0], {"from": accounts[2]})
+    d21.voteNegative(subj_add[2], {"from": accounts[2]})
+
+    d21.votePositive(subj_add[2], {"from": accounts[3]})
+    d21.votePositive(subj_add[3], {"from": accounts[3]})
+    d21.voteNegative(subj_add[1], {"from": accounts[3]})
+
+    d21.votePositive(subj_add[3], {"from": accounts[4]})
+    d21.votePositive(subj_add[2], {"from": accounts[4]})
+    d21.voteNegative(subj_add[1], {"from": accounts[4]})
+
 
 def test_addSubjectAnyone(d21):
     # check that a new subject can be added
-    tx = d21.addSubject("Party A", {"from": accounts[1]})
-    #tx.wait(1)
-    assert d21.votingResults(0) == ("Party A", 0) 
+    d21.addSubject("Party A", {"from": accounts[1]})
+    subj_add = d21.getSubjects()
+    assert d21.subjectsMap(subj_add[0]) == ("Party A", 0) 
 
 def test_addVoter(d21):
     d21.addVoter(accounts[1].address, {"from": accounts[0]})
@@ -92,3 +115,17 @@ def test_cannotVoteNegative(d21, add_voters_and_parties):
     #test_voteForSubjectNegative
     d21.voteNegative(subj_add[2], {"from": accounts[1]})
     d21.voteNegative(subj_add[1], {"from": accounts[1]})
+
+
+def test_getRemainingTime(d21):
+    assert d21.getRemainingTime() > 0
+
+def test_getRemainingTime7DaysPassed(d21):
+    #TODO rewind/unwind
+    assert d21.getRemainingTime() == 0
+
+def test_getResults(d21, results_fixture):
+    #TODO rewind/unwind
+    results = d21.getResults()
+    #figure out what results should look like
+    
