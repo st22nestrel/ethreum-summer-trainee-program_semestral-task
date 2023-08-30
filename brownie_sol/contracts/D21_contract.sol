@@ -16,6 +16,7 @@ contract D21 is IVoteD21 {
     }
 
     mapping (address => Subject) public subjectsMap;
+    mapping (string => bool) public subjectRegistered;
     address[] public subjectsAddressess;
 
     mapping (address => Voter) public votersMap;
@@ -71,20 +72,14 @@ contract D21 is IVoteD21 {
     }
 
     function getRemainingTime() public view returns(uint) {
-        return duration - block.number;
-    }
-
-    function getRemainingTimeStamp() public view returns(uint) {
-        //return duration - (block.timestamp - creationTime);
-        
-        return hasVotingEndedTimeStamp() ? 0 : (creationTime + duration) - block.timestamp;
+        return hasVotingEnded() ? 0 : (creationTime + duration) - block.timestamp;
     }
 
     function convertSubjectMapToArray() public view returns(Subject[] memory){
         uint160 l = uint160(subjectsAddressess.length);
         Subject[] memory votingResults = new Subject[](l);
-        for(uint160 i = 0; i < l; unsafe_inc160(i)) {
-            votingResults[i] = subjectsMap[address(i+1)];
+        for(uint160 i = 0; i < l; i = unsafe_inc160(i)) {
+            votingResults[i] = subjectsMap[address(bytes20(i+1))];
         }
         return votingResults;
     }
@@ -99,9 +94,9 @@ contract D21 is IVoteD21 {
     function getResultsIterativeSort() public view returns(Subject[] memory){
         uint160 l = uint160(subjectsAddressess.length);
         Subject[] memory votingResults = convertSubjectMapToArray();
-        for(uint160 i = 0; i < l; unsafe_inc160(i)) {
-            for(uint160 j = i+1; j < l; unsafe_inc160(j)) {
-                if(votingResults[i].votes > 
+        for(uint160 i = 0; i < l; i = unsafe_inc160(i)) {
+            for(uint160 j = i+1; j < l; j = unsafe_inc160(j)) {
+                if(votingResults[i].votes < 
                    votingResults[j].votes) {
                     Subject memory temp = votingResults[i];
                     votingResults[i] = votingResults[j];
@@ -205,10 +200,6 @@ contract D21 is IVoteD21 {
     } */
 
     function hasVotingEnded() public view returns(bool) {
-        return block.number < /* creationTime + */ duration ? false : true;
-    }
-
-    function hasVotingEndedTimeStamp() public view returns(bool) {
         return block.timestamp < creationTime + duration ? false : true;
     }
 

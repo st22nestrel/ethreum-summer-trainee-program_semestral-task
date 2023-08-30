@@ -11,34 +11,35 @@ def d21():
 
 @pytest.fixture()
 def add_voters_and_parties(d21):
-    d21.addSubject("Demokrati", {"from": accounts[0]})
-    d21.addSubject("SaS", {"from": accounts[0]})
-    d21.addSubject("Smer", {"from": accounts[0]})
+    d21.addSubject("Dolly democrats", {"from": accounts[0]})
+    d21.addSubject("Jelly activists", {"from": accounts[0]})
+    d21.addSubject("Brown eco", {"from": accounts[0]})
     d21.addVoter(accounts[1].address, {"from": accounts[0]})
     d21.addVoter(accounts[2].address, {"from": accounts[0]})
 
 @pytest.fixture()
 def results_fixture(d21, add_voters_and_parties):
-    d21.addSubject("Hlas", {"from": accounts[0]})
+    d21.addSubject("New order", {"from": accounts[0]})
+    d21.addSubject("Tasty House", {"from": accounts[0]})
     d21.addVoter(accounts[3].address, {"from": accounts[0]})
     d21.addVoter(accounts[4].address, {"from": accounts[0]})
 
     subj_add = d21.getSubjects()
     d21.votePositive(subj_add[0], {"from": accounts[1]})
     d21.votePositive(subj_add[1], {"from": accounts[1]})
-    d21.voteNegative(subj_add[2], {"from": accounts[1]})
+    d21.voteNegative(subj_add[3], {"from": accounts[1]})
 
     d21.votePositive(subj_add[1], {"from": accounts[2]})
     d21.votePositive(subj_add[0], {"from": accounts[2]})
-    d21.voteNegative(subj_add[2], {"from": accounts[2]})
+    d21.voteNegative(subj_add[3], {"from": accounts[2]})
 
-    d21.votePositive(subj_add[2], {"from": accounts[3]})
+    d21.votePositive(subj_add[4], {"from": accounts[3]})
     d21.votePositive(subj_add[3], {"from": accounts[3]})
-    d21.voteNegative(subj_add[1], {"from": accounts[3]})
+    d21.voteNegative(subj_add[0], {"from": accounts[3]})
 
-    d21.votePositive(subj_add[3], {"from": accounts[4]})
+    d21.votePositive(subj_add[0], {"from": accounts[4]})
     d21.votePositive(subj_add[2], {"from": accounts[4]})
-    d21.voteNegative(subj_add[1], {"from": accounts[4]})
+    d21.voteNegative(subj_add[3], {"from": accounts[4]})
 
 @pytest.fixture()
 def time_travel(web3):
@@ -176,10 +177,14 @@ def test_getRemainingTime7DaysPassed(d21, time_travel_3):
     #time_travel(7 * 24 * 60 * 60 + 1000)
 
     #assert 0 == 1
-    assert d21.getRemainingTimeStamp() == 0
+    assert d21.getRemainingTime() == 0
 
-def test_getResults(d21, results_fixture):
+def test_getResults(d21, results_fixture, time_travel_3):
     #TODO rewind/unwind
+    assert 0 == 1
+
     results = d21.getResults()
+
+    #assert 0 == 1
     #figure out what results should look like
     
