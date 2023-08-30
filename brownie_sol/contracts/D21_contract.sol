@@ -7,7 +7,7 @@ contract D21 is IVoteD21 {
     address payable immutable public owner;
 
     uint immutable public creationTime; // state variable to store the creation time
-    uint public duration;
+    uint constant public duration = 7 days;
 
     struct Voter{
         address[2] votedPositive;
@@ -16,37 +16,32 @@ contract D21 is IVoteD21 {
     }
 
     mapping (address => Subject) public subjectsMap;
-    address[] public subjectsAdressess;
+    address[] public subjectsAddressess;
 
     mapping (address => Voter) public votersMap;
 
-    constructor (uint _duration) {
+    constructor () {
         owner = payable(msg.sender);
-        creationTime = block.timestamp; // initialize the creation time to current time
-        if (_duration == 0)
-            duration = _duration;
-        else {
-            duration = 7 days;
-        }
+        creationTime = block.timestamp;
+        //creationTime = block.number; // initialize the creation time to current time
     }
 
     function addSubject(string memory name) public {
         // Generate a new address for the subject
-        address subjectAddress = address(bytes20(uint160(subjectsAdressess.length + 1)));
+        address subjectAddress = address(bytes20(uint160(subjectsAddressess.length + 1)));
 
         Subject memory newSubject = Subject(name, 0);
         subjectsMap[subjectAddress] = newSubject;
-        subjectsAdressess.push(subjectAddress);
+        subjectsAddressess.push(subjectAddress);
     }
 
     //if voter not in 
     function addVoter(address addr) public onlyOwner {
-        // maybe payable(addr)
         votersMap[addr] = Voter([address(0), address(0)] ,false, true);
     }
 
     function getSubjects() public view returns(address[] memory) {
-        return subjectsAdressess;
+        return subjectsAddressess;
     }
 
     function getSubject(address addr) public view returns(Subject memory) {
@@ -76,18 +71,36 @@ contract D21 is IVoteD21 {
     }
 
     function getRemainingTime() public view returns(uint) {
-        return creationTime + block.timestamp - duration;
+        return duration - block.number;
     }
 
+    function getRemainingTimeStamp() public view returns(uint) {
+        //return duration - (block.timestamp - creationTime);
+        
+        return hasVotingEndedTimeStamp() ? 0 : (creationTime + duration) - block.timestamp;
+    }
+
+    function convertSubjectMapToArray() public view returns(Subject[] memory){
+        uint160 l = uint160(subjectsAddressess.length);
+        Subject[] memory votingResults = new Subject[](l);
+        for(uint160 i = 0; i < l; unsafe_inc160(i)) {
+            votingResults[i] = subjectsMap[address(i+1)];
+        }
+        return votingResults;
+    }
 
 
     function getResults() public view returns(Subject[] memory) {
         require(hasVotingEnded(), "Voting not ended yet, cannot view results");
 
-        uint l = subjectsAdressess.length;
-        Subject[] memory votingResults = new Subject[](l);
-        for(uint i = 0; i < l; i++) {
-            for(uint j = i+1; j < l ;j++) {
+        return getResultsIterativeSort();
+    }
+
+    function getResultsIterativeSort() public view returns(Subject[] memory){
+        uint160 l = uint160(subjectsAddressess.length);
+        Subject[] memory votingResults = convertSubjectMapToArray();
+        for(uint160 i = 0; i < l; unsafe_inc160(i)) {
+            for(uint160 j = i+1; j < l; unsafe_inc160(j)) {
                 if(votingResults[i].votes > 
                    votingResults[j].votes) {
                     Subject memory temp = votingResults[i];
@@ -99,25 +112,120 @@ contract D21 is IVoteD21 {
         return votingResults;
     }
 
-    function hasVotingEnded() private view returns(bool) {
+    function quickSort(Subject[] memory arr, int left, int right) internal view{
+        int i = left;
+        int j = right;
+        if(i==j) return;
+        int pivot = arr[uint(left + (right - left) / 2)].votes;
+        while (i <= j) {
+            while (arr[uint(i)].votes < pivot) i++;
+            while (pivot < arr[uint(j)].votes) j--;
+            if (i <= j) {
+                (arr[uint(i)], arr[uint(j)]) = (arr[uint(j)], arr[uint(i)]);
+                i++;
+                j--;
+            }
+        }
+        if (left < j)
+            quickSort(arr, left, j);
+        if (i < right)
+            quickSort(arr, i, right);
+    }
+
+    function getResultsQuickSort() public view returns(Subject[] memory){
+        Subject[] memory votingResults = convertSubjectMapToArray();
+        quickSort(votingResults, int(0), int(subjectsAddressess.length - 1));
+        return votingResults;
+    }
+    
+
+    /* function quickSort (uint32[] memory a) internal view returns(Subject[] memory) {
+        uint160 l = uint160(subjectsAddressess.length);
+        Subject[] memory votingResults = convertSubjectMapToArray();
+		uint32 i;
+		uint32[] memory s = new uint32[](l);
+		uint32 v;
+		uint32 t;
+		uint32 p;
+		uint32 x;
+		uint32 y;
+		uint32 l;
+		uint32 r;
+
+
+        l = 0;
+        r = uint32(a.length - 1);
+
+        i = 2;
+        s[0] = l;
+        s[0] = r;
+
+        while (i > 0) {
+            r = s[--i];
+            l = s[--i];
+
+            if (l < r) {
+                // partition
+
+                x = l;
+                y = r - 1;
+
+                p = l;
+                v = a[p];
+                a[p] = a[r];
+
+                while (true) {
+                    while (
+                        x <= y &&
+                        a[x] < v) {
+                        x++;
+                                    }
+                    while (
+                        x <= y &&
+                        a[y] >= v) {
+                        y--;
+                                    }
+                    if (x > y)
+                        break;
+                    t = a[x];
+                    a[x] = a[y];
+                    a[y] = t;
+                }
+
+                a[r] = a[x];
+                a[x] = v;
+
+                // end
+
+                s[i++] = l;
+                s[i++] = x - 1;
+                s[i++] = x + 1;
+                s[i++] = r;
+            }
+    } */
+
+    function hasVotingEnded() public view returns(bool) {
+        return block.number < /* creationTime + */ duration ? false : true;
+    }
+
+    function hasVotingEndedTimeStamp() public view returns(bool) {
         return block.timestamp < creationTime + duration ? false : true;
     }
 
     /// Section: modifiers
-
     modifier onlyOwner() {
         require(msg.sender == owner, "Only the owner can call this function");
         _;
     }
 
     modifier canVotePositive() {
-        require(voted2xPositive() == false, "Exceeded limit for positive votes, cannot vote positive");
+        require(!voted2xPositive(), "Exceeded limit for positive votes, cannot vote positive");
         _;
     }
 
     modifier canVoteNegative() {
-        require(voted2xPositive() == true, "Condition for negative vote not met - need to vote 2 positives first");
-        require(votersMap[msg.sender].votedNegative == false, "Exceeded limit for negative votes, cannot vote negative");
+        require(voted2xPositive(), "Condition for negative vote not met - need to vote 2 positives first");
+        require(!votersMap[msg.sender].votedNegative, "Exceeded limit for negative votes, cannot vote negative");
         _;
     }
 
@@ -127,17 +235,23 @@ contract D21 is IVoteD21 {
     }
 
     modifier canVote() {
-        require(hasVotingEnded() == false, "Voting ended, cannot vote anymore");
-        require(votersMap[msg.sender].registered == true, "Caller is not registered for voting");
+        require(!hasVotingEnded(), "Voting ended, cannot vote anymore");
+        require(votersMap[msg.sender].registered, "Caller is not registered for voting");
         _;
     }
 
     /// Section: debug functions
     function checkCanSenderVote() public view returns(bool) {
-        return votersMap[msg.sender].registered == true;
+        return votersMap[msg.sender].registered;
     }
 
     function getVotedParties() public view returns(address[2] memory) {
         return votersMap[msg.sender].votedPositive;
     }
+
+    function unsafe_inc160(uint160 x) private pure returns (uint160) {
+        unchecked { return x + 1; }
+    }
+
+    
 }

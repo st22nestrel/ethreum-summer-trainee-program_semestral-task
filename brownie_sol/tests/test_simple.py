@@ -1,10 +1,11 @@
-from brownie import D21, accounts, network, config
+from brownie import D21, accounts, chain
 import pytest
+import web3
 
 @pytest.fixture
 def d21():
     # deploy the contract with the initial parameters
-    return D21.deploy(120,
+    return D21.deploy(
         {"from": accounts[0]}
     )
 
@@ -38,6 +39,55 @@ def results_fixture(d21, add_voters_and_parties):
     d21.votePositive(subj_add[3], {"from": accounts[4]})
     d21.votePositive(subj_add[2], {"from": accounts[4]})
     d21.voteNegative(subj_add[1], {"from": accounts[4]})
+
+@pytest.fixture()
+def time_travel(web3):
+    web3 = web3.Web3(d21)
+    def _time_travel(seconds):
+        current_block = web3.eth.get_block('latest')
+        future_timestamp = current_block['timestamp'] + seconds
+        web3.provider.make_request(
+            "evm_increaseTime",
+            [future_timestamp - current_block['timestamp']]
+        )
+        web3.provider.make_request("evm_mine", [])
+    yield _time_travel
+
+@pytest.fixture()
+def time_travel_2(d21):
+    web3 = d21.web3
+    
+    # Get the current block number using the deployed contract's web3 instance
+    current_block = web3.eth.blockNumber
+    current_timestamp = web3.eth.getBlock(current_block)["timestamp"]
+
+    print(f"Current block number: {updated_block}")
+    print(f"Current timestamp: {updated_timestamp}")
+
+    # Set the block timestamp to simulate the passage of time
+    new_timestamp = current_timestamp + (7 * 24 * 60 * 60)
+    web3.testing.timeTravel(new_timestamp)
+
+    # Verify the updated block number and timestamp
+    updated_block = web3.eth.blockNumber
+    updated_timestamp = web3.eth.getBlock(updated_block)["timestamp"]
+
+    print(f"Current block number: {updated_block}")
+    print(f"Current timestamp: {updated_timestamp}")
+
+@pytest.fixture()
+def time_travel_3(d21):
+    # Get the current block number
+    initial_block_number = chain[-1].number
+    initial_timestamp = chain[-1].timestamp
+
+    # Calculate the number of blocks equivalent to 7 days
+    blocks_to_pass = 7 * 24 * 60 * 4  # Assuming 15 seconds per block
+    time_to_pass = 7 * 24 * 60 * 60
+
+    # Increase the block number by the desired number of blocks
+    #chain.mine(timestamp=initial_timestamp + time_to_pass)
+    chain.mine(timedelta=time_to_pass)
 
 
 def test_addSubjectAnyone(d21):
@@ -120,9 +170,13 @@ def test_cannotVoteNegative(d21, add_voters_and_parties):
 def test_getRemainingTime(d21):
     assert d21.getRemainingTime() > 0
 
-def test_getRemainingTime7DaysPassed(d21):
+def test_getRemainingTime7DaysPassed(d21, time_travel_3):
     #TODO rewind/unwind
-    assert d21.getRemainingTime() == 0
+    #time.sleep(20)
+    #time_travel(7 * 24 * 60 * 60 + 1000)
+
+    #assert 0 == 1
+    assert d21.getRemainingTimeStamp() == 0
 
 def test_getResults(d21, results_fixture):
     #TODO rewind/unwind
