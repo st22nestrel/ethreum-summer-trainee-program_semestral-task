@@ -8,6 +8,19 @@ You can find full description of task here https://courses.fit.cvut.cz/NIE-BLO/t
 
 Project was created using `brownie` framework, `python3`.8 and deprecated `ganache-cli` (needed for testing and deployement in brownie)
 
+## Usage
+To run project, first install brownie. Then `cd` into folder with contract:
+
+```cd brownie-sol```
+
+To compile project:
+
+```brownie compile```
+
+To run tests:
+
+```brownie test```
+
 ## Resources
 ### These links are left here as learning resources that I have gone though in order to create this project, and that I personaly recommend to check out
 Project implemetation was inspired by Lottery smart contract:
@@ -25,4 +38,5 @@ Contract security check (basicly video from where I took how to use `slither`):
 ## Gas usage optimalizations
 I did not use any specific tool to monitor gas usage of this contract
 
-I only used tips from internet
+I only used basic tips from internet, and this guide that explains how to use least gas during loop iteration
+- https://www.youtube.com/watch?v=IkdoQI7API0
