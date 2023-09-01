@@ -1,0 +1,19 @@
+# new project
+brownie init
+
+# compile contracts
+brownie compile
+
+# run all tests (-s for printing)
+brownie test -s
+# run only one test
+brownie test -k <function_name>
+# debug in shell when test not passed
+brownie test --pdb
+
+# run single script
+brownie run scripts/<file>
+brownie run scripts/test.py
+
+# activate created venv enviroment
+source env/bin/activate

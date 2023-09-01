@@ -6,7 +6,7 @@ This project was created as part applicaation to *Ethereum Summer Trainee Progra
 
 You can find full description of task here https://courses.fit.cvut.cz/NIE-BLO/tutorials/05/index.html#_semestral-work-implementation-of-d21-voting-method
 
-Project was created using `brownie` framework, `python3`.8 and deprecated `ganache-cli` (needed for testing and deployement in brownie)
+Project was created using `brownie` framework, `python3.8` and deprecated `ganache-cli` (needed for testing and deployement in brownie)
 
 ## Usage
 To run project, first install brownie. Then `cd` into folder with contract:
@@ -20,6 +20,8 @@ To compile project:
 To run tests:
 
 ```brownie test```
+
+For other useful commands @see file `helpfull.txt`
 
 ## Resources
 ### These links are left here as learning resources that I have gone though in order to create this project, and that I personaly recommend to check out
